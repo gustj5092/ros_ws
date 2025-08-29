@@ -121,70 +121,79 @@ class Yolov8InfoExtractor(Node):
         left_lane_edge = CPFL.draw_edges_from_detections(left_detection_array, color=255)
         right_lane_edge = CPFL.draw_edges_from_detections(right_detection_array, color=255)
         
-        # 두 엣지 이미지를 합쳐서 전체 차선 이미지 생성
-        combined_lane_edge = cv2.bitwise_or(left_lane_edge, right_lane_edge)
-
-        if combined_lane_edge is None:
+        if left_lane_edge is None or right_lane_edge is None:
             self.get_logger().warn("Failed to create lane edge image.")
             return
 
-        # --- 3. 버드아이뷰 변환 ---
-        (h, w) = (combined_lane_edge.shape[0], combined_lane_edge.shape[1])
-        
-        # dst_mat을 이미지 크기와 비율에 따라 동적으로 계산
+        # --- 3. 버드아이뷰 변환 (좌/우 각각) ---
+        (h, w) = (left_lane_edge.shape[0], left_lane_edge.shape[1])
         r = self.dst_points_ratio
         dst_mat = [[round(w * r[0]), round(h * r[1])], [round(w * r[2]), round(h * r[3])], 
                    [round(w * r[4]), round(h * r[5])], [round(w * r[6]), round(h * r[7])]]
+        
+        left_bird_image = CPFL.bird_convert(left_lane_edge, srcmat=self.src_mat, dstmat=dst_mat)
+        right_bird_image = CPFL.bird_convert(right_lane_edge, srcmat=self.src_mat, dstmat=dst_mat)
 
-        lane_bird_image = CPFL.bird_convert(combined_lane_edge, srcmat=self.src_mat, dstmat=dst_mat)
+        # --- 4. ROI 추출 (좌/우 각각) ---
+        left_roi_image = CPFL.roi_rectangle_below(left_bird_image, cutting_idx=self.cutting_idx)
+        right_roi_image = CPFL.roi_rectangle_below(right_bird_image, cutting_idx=self.cutting_idx)
         
-        # --- 4. ROI 추출 ---
-        roi_image = CPFL.roi_rectangle_below(lane_bird_image, cutting_idx=self.cutting_idx)
-
-        if self.show_image:
-            cv2.imshow('Left Lane Edge', left_lane_edge)
-            cv2.imshow('Right Lane Edge', right_lane_edge)
-            cv2.imshow('Combined Bird-eye View', lane_bird_image)
-            cv2.imshow('ROI Image', roi_image)
-            cv2.waitKey(1)
-        
-        # ROI 이미지를 ROS 메시지로 변환하여 퍼블리시
-        try:
-            roi_image_msg = self.cv_bridge.cv2_to_imgmsg(roi_image.astype(np.uint8), encoding="mono8")
-            self.roi_image_publisher.publish(roi_image_msg)
-        except Exception as e:
-            self.get_logger().error(f"Failed to convert and publish ROI image: {e}")
-        
-        left_fitx, ploty = self.fit_polynomial_and_get_waypoints(left_lane_edge_bird_roi) # 버드아이뷰 변환 및 ROI가 적용된 좌측 차선 이미지
-        right_fitx, _ = self.fit_polynomial_and_get_waypoints(right_lane_edge_bird_roi) # 버드아이뷰 변환 및 ROI가 적용된 우측 차선 이미지
+        # --- 5. Waypoints 계산 ---
+        left_fitx, ploty = self.fit_polynomial_and_get_waypoints(left_roi_image)
+        right_fitx, _ = self.fit_polynomial_and_get_waypoints(right_roi_image)
 
         target_points = []
         center_fitx = None
 
         if left_fitx is not None and right_fitx is not None:
-            # 양쪽 차선이 모두 인식되면, 중앙 경로 계산
             center_fitx = (left_fitx + right_fitx) // 2
         elif left_fitx is not None:
-            # 왼쪽 차선만 인식되면, 차선 폭 만큼 오른쪽으로 오프셋
             center_fitx = left_fitx + (self.lane_width // 2)
         elif right_fitx is not None:
-            # 오른쪽 차선만 인식되면, 차선 폭 만큼 왼쪽으로 오프셋
             center_fitx = right_fitx - (self.lane_width // 2)
 
-        if center_fitx is not None:
-            # Waypoints 생성 (예: 10개)
-            # ploty 배열에서 일정한 간격으로 인덱스를 샘플링
-            for i in range(0, len(ploty), len(ploty) // 10):
-                target_point = TargetPoint()
-                target_point.target_x = int(center_fitx[i])
-                target_point.target_y = int(ploty[i])
-                target_points.append(target_point)
-
+        if center_fitx is not None and ploty is not None:
+            for i in range(0, len(ploty), len(ploty) // 10): # 10개의 Waypoint 샘플링
+                if i < len(center_fitx):
+                    target_point = TargetPoint()
+                    target_point.target_x = int(center_fitx[i])
+                    target_point.target_y = int(ploty[i])
+                    target_points.append(target_point)
+        
         lane = LaneInfo()
-        lane.slope = grad
+        lane.slope = 0.0 
         lane.target_points = target_points
-
         self.publisher.publish(lane)
+
+'''
+        if self.show_image:
+            # 시각화를 위해 좌/우 ROI 이미지를 합침
+            combined_roi = cv2.bitwise_or(left_roi_image, right_roi_image)
+            out_img = np.dstack((combined_roi, combined_roi, combined_roi))
+
+            if left_fitx is not None:
+                pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+                cv2.polylines(out_img, [pts_left], isClosed=False, color=(255,0,0), thickness=2)
+            if right_fitx is not None:
+                pts_right = np.array([np.transpose(np.vstack([right_fitx, ploty]))])
+                cv2.polylines(out_img, [pts_right], isClosed=False, color=(0,0,255), thickness=2)
+            if center_fitx is not None:
+                pts_center = np.array([np.transpose(np.vstack([center_fitx, ploty]))])
+                cv2.polylines(out_img, [pts_center], isClosed=False, color=(0,255,0), thickness=2)
+
+            cv2.imshow("Lane Fitting Result", out_img)
+            # 다른 이미지 창들은 혼란을 줄 수 있으므로 주석 처리하거나 제거
+            # cv2.imshow('Left Lane Edge', left_lane_edge)
+            # cv2.imshow('Right Lane Edge', right_lane_edge)
+            cv2.waitKey(1)
+            
+            # ROI 이미지는 계속 퍼블리시
+            try:
+                roi_image_msg = self.cv_bridge.cv2_to_imgmsg(combined_roi.astype(np.uint8), encoding="mono8")
+                self.roi_image_publisher.publish(roi_image_msg)
+            except Exception as e:
+                self.get_logger().error(f"Failed to convert and publish ROI image: {e}")
+'''
 
 
 def main(args=None):
