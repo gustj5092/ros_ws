@@ -21,7 +21,15 @@ def generate_launch_description():
             package='camera_perception_pkg',
             executable='lane_info_extractor_node',
             name='lane_info_extractor_node',
-            output='screen'
+            output='screen',
+            parameters=[
+                # 캘리브레이션으로 찾은 값
+                {'perspective.src_points': [173, 132, 422, 134, 632, 241, 5, 225]},
+
+                # 튜닝값
+                {'roi.cutting_idx': 300}, # 너무 먼 곳까지 봐서 조향이 불안정하면 이 값을 줄여보면됨
+                {'lane.width': 350}      # 버드아이뷰에서 보이는 차선 폭(pixel)에 맞게 조절
+            ]
         ),
 
         # 경로/모션
