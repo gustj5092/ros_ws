@@ -105,11 +105,46 @@ class MotionPlanningNode(Node):
             else:
                 target_slope = DMFL.calculate_slope_between_points(self.path_data[-10], self.path_data[-1])
                 
-                if target_slope > 0:
-                    self.steering_command =  7 # 예시 조향 값 (7이 최대 조향) 
-                elif target_slope < 0:
-                    self.steering_command =  -7
-                else:
+                # 조향 각도 범위 세분화
+                if target_slope > 0: # right
+                    if 0 < target_slope <= 5:
+                        self.steering_command = 0
+                    elif 5 < target_slope <= 10:
+                        self.steering_command = 1
+                    elif 10 < target_slope <= 15:
+                        self.steering_command = 2
+                    elif 15 < target_slope <= 20:
+                        self.steering_command = 3
+                    elif 20 < target_slope <= 30:
+                        self.steering_command = 4
+                    elif 30 < target_slope <= 50:
+                        self.steering_command = 5
+                    elif 50 < target_slope <= 70:
+                        self.steering_command = 6
+                    elif target_slope > 70:
+                        self.steering_command = 7
+                    else:
+                        self.steering_command = 0
+                elif target_slope < 0: # left
+                    if -5 <= target_slope < 0:
+                        self.steering_command = 0
+                    elif -10 <= target_slope < -5:
+                        self.steering_command = -1
+                    elif -15 <= target_slope < -10:
+                        self.steering_command = -2
+                    elif -20 <= target_slope < -15:
+                        self.steering_command = -3
+                    elif -30 <= target_slope < -20:
+                        self.steering_command = -4
+                    elif -50 <= target_slope < -30:
+                        self.steering_command = -5
+                    elif -70 <= target_slope < -50:
+                        self.steering_command = -6
+                    elif target_slope < -70:
+                        self.steering_command = -7
+                    else:
+                        self.steering_command = 0
+                else: # target_slope == 0
                     self.steering_command = 0
 
 
