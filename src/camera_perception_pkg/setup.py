@@ -24,6 +24,7 @@ setup(
             'yolov8_node = camera_perception_pkg.yolov8_node:main',
             'traffic_light_detector_node = camera_perception_pkg.traffic_light_detector_node:main',
             'lane_info_extractor_node = camera_perception_pkg.lane_info_extractor_node:main',
+       	    'yolov8_visualizer_node = camera_perception_pkg.yolov8_visualizer_node:main',  # ← 시각화 노드도
         ],
     },
 )

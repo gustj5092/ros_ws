@@ -53,18 +53,18 @@ class Yolov8InfoExtractor(Node):
         if len(detection_msg.detections) == 0:
             return
         
-        lane2_edge_image = CPFL.draw_edges(detection_msg, cls_name='lane2', color=255)
+        lane_edge_image = CPFL.draw_edges(detection_msg, cls_name='lane', color=255)
 
-        (h, w) = (lane2_edge_image.shape[0], lane2_edge_image.shape[1]) #(480, 640)
+        (h, w) = (lane_edge_image.shape[0], lane_edge_image.shape[1]) #(480, 640)
         dst_mat = [[round(w * 0.3), round(h * 0.0)], [round(w * 0.7), round(h * 0.0)], [round(w * 0.7), h], [round(w * 0.3), h]]
         src_mat = [[238, 316],[402, 313], [501, 476], [155, 476]]
         
-        lane2_bird_image = CPFL.bird_convert(lane2_edge_image, srcmat=src_mat, dstmat=dst_mat)
-        roi_image = CPFL.roi_rectangle_below(lane2_bird_image, cutting_idx=300)
+        lane_bird_image = CPFL.bird_convert(lane_edge_image, srcmat=src_mat, dstmat=dst_mat)
+        roi_image = CPFL.roi_rectangle_below(lane_bird_image, cutting_idx=300)
 
         if self.show_image:
-            cv2.imshow('lane2_edge_image', lane2_edge_image)
-            cv2.imshow('lane2_bird_img', lane2_bird_image)
+            cv2.imshow('lane_edge_image', lane_edge_image)
+            cv2.imshow('lane_bird_img', lane_bird_image)
             cv2.imshow('roi_img', roi_image)
             cv2.waitKey(1)
 

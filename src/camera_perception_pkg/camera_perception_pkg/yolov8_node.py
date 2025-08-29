@@ -57,8 +57,8 @@ class Yolov8Node(LifecycleNode):
         self.declare_parameter("model", "best.pt")
         
         # 추론 하드웨어 선택 (cpu / gpu) 
-        self.declare_parameter("device", "cpu")
-        #self.declare_parameter("device", "cuda:0")
+        #self.declare_parameter("device", "cpu")
+        self.declare_parameter("device", "cuda:0")
         #----------------------------------------------
         
         self.declare_parameter("threshold", 0.5)
