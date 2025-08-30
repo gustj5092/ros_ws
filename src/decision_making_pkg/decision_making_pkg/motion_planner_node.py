@@ -47,7 +47,7 @@ class MotionPlanningNode(Node):
         self.path_data = None
         self.traffic_light_data = None
         self.lidar_data = None
-'''
+        '''
         # --- PID 제어 변수 추가 ---
         # 튜닝이 필요한 PID 게인 값 (초기값이며, 주행 테스트를 통해 조절)
         self.kp = self.declare_parameter('pid.kp', 0.03).value
@@ -57,7 +57,7 @@ class MotionPlanningNode(Node):
         self.prev_error = 0.0
         self.integral = 0.0
         # ---------------------------
-'''
+        '''
 
         self.steering_command = 0
         self.left_speed_command = 0
@@ -149,7 +149,7 @@ class MotionPlanningNode(Node):
                 # pid_output 값을 차량이 사용하는 조향각 범위(-7 ~ 7)로 매핑
                 # 이 범위는 실험을 통해 조절해야 함
                 self.steering_command = int(max(-7, min(7, pid_output)))
-'''
+                '''
 
                 target_slope = DMFL.calculate_slope_between_points(self.path_data[-10], self.path_data[-1])
                 
